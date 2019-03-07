@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Venn Diagrammm</title>
+
+    <style>
+        canvas {
+            border: 1px solid;
+        }
+    </style>
+</head>
+<body>
+<script src="users.js"></script>
+<script src="conversations.js"></script>
+
+<script>
+    const screenW = 1000;
+    const screenH = 1000;
+    const defaultRadius = 150;
+    const betweenUsers = 10;
+
+    for (let i = 0; i < Object.keys(users).length; i++) {
+
+        let user = users[Object.keys(users)[i]];
+        let coordinatesFound = false;
+
+        for (let y = 0; y < screenH && !coordinatesFound; y++) {
+            for (let x = 0; x < screenW && !coordinatesFound; x++) {
+                let whereItShouldBe = true;
+                for (let c = 0; whereItShouldBe && c < user.conversations.length; c++) {
+                    let conversation = conversations[user.conversations[c]];
+                    if (conversation.coordinates.length) {
+                        let dx = Math.abs(conversation.coordinates[0] - x);
+                        let dy = Math.abs(conversation.coordinates[1] - y);
+
+                        let d = Math.sqrt(dx * dx + dy * dy);
+                        let r = conversation.radius || defaultRadius;
+
+                        whereItShouldBe = d < r - betweenUsers;
+                    }
+                }
+                for (let c = 0; whereItShouldBe && c < user.notInConversation.length; c++) {
+                    let notInConversation = conversations[user.notInConversation[c]];
+                    if (notInConversation.coordinates.length) {
+                        let dx = Math.abs(notInConversation.coordinates[0] - x);
+                        let dy = Math.abs(notInConversation.coordinates[1] - y);
+
+                        let d = Math.sqrt(dx * dx + dy * dy);
+                        let r = notInConversation.radius || defaultRadius;
+
+                        whereItShouldBe = d > r + betweenUsers;
+                    }
+                }
+                if (whereItShouldBe) {
+                    let farEnough = true;
+                    for (let u = 0; u < Object.keys(users).length; u++) {
+                        let otherUser = users[Object.keys(users)[u]];
+                        if (i === u || !otherUser.coordinates.length) {
+                            continue;
+                        }
+                        let dx = Math.abs(otherUser.coordinates[0] - x);
+                        let dy = Math.abs(otherUser.coordinates[1] - y);
+
+                        let d = Math.sqrt(dx * dx + dy * dy);
+
+                        farEnough = d > betweenUsers;
+                        if (!farEnough) {
+                            break;
+                        }
+                    }
+                    if (farEnough) {
+                        user.coordinates = [x, y];
+                        coordinatesFound = true;
+                    }
+                }
+            }
+        }
+    }
+
+    console.log(users);
+
+    const canvas = document.createElement('canvas');
+
+    canvas.height = screenH;
+    canvas.width = screenW;
+
+    document.body.appendChild(canvas);
+
+    let ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, screenW, screenH);
+
+    for (let i = 0; i < Object.keys(conversations).length; i++) {
+        let conversation = conversations[Object.keys(conversations)[i]];
+        let r = conversation.radius || defaultRadius;
+
+        ctx.beginPath();
+        ctx.arc(conversation.coordinates[0], conversation.coordinates[1], r, 0, Math.PI * 2, false); // Outer circle
+//    ctx.lineWidth = 5;
+//        ctx.strokeStyle = conversation.coordinates[2] || '#000000';
+        ctx.stroke();
+    }
+
+    let unpositionedUsers = 0;
+
+    for (let i = 0; i < Object.keys(users).length; i++) {
+        let user = users[Object.keys(users)[i]];
+        ctx.beginPath();
+        ctx.arc(user.coordinates[0], user.coordinates[1], 5, 0, Math.PI * 2, false); // Outer circle
+//    ctx.lineWidth = 5;
+        ctx.fillStyle = user.color || '#000';
+        ctx.fill();
+
+        if (!user.coordinates[0] && !user.coordinates[1]) {
+            unpositionedUsers++;
+            console.log(user)
+        }
+    }
+
+    if (unpositionedUsers) {
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(screenW - 50, screenH - 50, screenW, screenH);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(unpositionedUsers, screenW - 25, screenH - 15);
+    }
+
+
+</script>
+</body>
+</html>
